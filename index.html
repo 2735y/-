@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中药材行情看板</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+:root{
+  --green:#1e4d3a;--green-deep:#14352a;--green-light:#e8efe9;
+  --amber:#b8862e;--amber-light:#f5ead0;
+  --up:#2d7a4f;--down:#c0392b;
+  --ink:#1f2a24;--ink-soft:#4a5a50;--paper:#f5f3ed;--card:#fff;--line:#ddd8c8;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans SC',system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.7;}
+.serif{font-family:'Noto Serif SC',serif;}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px;}
+.header{background:linear-gradient(135deg,var(--green-deep),var(--green));color:#f0ece0;padding:20px 0;}
+.header .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.header h1{font-family:'Noto Serif SC',serif;font-size:22px;font-weight:700;}
+.header .meta{font-size:12px;opacity:.8;}
+.header .meta b{color:var(--amber-light);}
+.search-bar{margin:16px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.search-bar input{flex:1;max-width:420px;padding:10px 16px;border:1px solid var(--line);border-radius:8px;font-size:14px;outline:none;background:var(--card);}
+.search-bar input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(30,77,58,.1);}
+.search-bar .hint{font-size:12px;color:var(--ink-soft);}
+.search-results{margin-bottom:16px;}
+.search-results .chip{display:inline-block;background:var(--green-light);border:1px solid #c5d5c9;border-radius:16px;padding:4px 14px;margin:4px 6px 0 0;cursor:pointer;font-size:13px;transition:all .15s;}
+.search-results .chip:hover{background:var(--green);color:#fff;}
+.idx-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;margin:16px 0;}
+.idx-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;text-align:center;}
+.idx-card .lbl{font-size:12px;color:var(--ink-soft);margin-bottom:4px;}
+.idx-card .val{font-family:'Noto Serif SC',serif;font-size:22px;font-weight:900;}
+.idx-card .val.up{color:var(--up);}
+.idx-card .val.down{color:var(--down);}
+.idx-card .sub{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.idx-card.main{background:var(--green);color:#f0ece0;}
+.idx-card.main .lbl{color:rgba(240,236,224,.7);}
+.idx-card.main .sub{color:rgba(240,236,224,.6);}
+.grid{display:grid;gap:16px;margin:16px 0;}
+.grid.cols-2{grid-template-columns:1fr 1fr;}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;}
+.panel h3{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--amber);display:inline-block;}
+.rank-list{list-style:none;max-height:480px;overflow-y:auto;}
+.rank-list li{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13.5px;cursor:pointer;}
+.rank-list li:hover{background:#f9f8f3;}
+.rank-list li:last-child{border-bottom:none;}
+.rank-list .name{font-weight:500;}
+.rank-list .pct{font-weight:700;font-family:monospace;}
+.rank-list .pct.up{color:var(--up);}
+.rank-list .pct.down{color:var(--down);}
+.rank-list .idx-val{color:var(--ink-soft);font-size:12px;margin-right:8px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{background:var(--green);color:#f0ece0;padding:8px 10px;text-align:left;font-weight:500;position:sticky;top:0;z-index:1;}
+td{padding:8px 10px;border-bottom:1px solid var(--line);}
+tr:nth-child(even) td{background:#faf9f5;}
+tr.clickable{cursor:pointer;}
+tr.clickable:hover{background:var(--green-light);}
+tr.selected{background:var(--amber-light) !important;}
+.up-text{color:var(--up);font-weight:700;}
+.down-text{color:var(--down);font-weight:700;}
+.chart-box{width:100%;height:300px;}
+.news-list{list-style:none;}
+.news-list li{padding:10px 0;border-bottom:1px solid var(--line);}
+.news-list li:last-child{border-bottom:none;}
+.news-list .title{font-size:13.5px;line-height:1.5;color:var(--ink);text-decoration:none;display:block;}
+.news-list .title:hover{color:var(--green);text-decoration:underline;}
+.news-list .info{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.detail-panel{background:var(--amber-light);border:1px solid #e0d0a8;border-radius:8px;padding:16px;margin:16px 0;}
+.detail-panel h4{font-size:14px;margin-bottom:8px;}
+.detail-panel .empty{color:var(--ink-soft);font-size:13px;}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+.stat-box{background:var(--card);border-radius:6px;padding:10px;text-align:center;}
+.stat-box .lbl{font-size:11px;color:var(--ink-soft);}
+.stat-box .val{font-size:16px;font-weight:700;font-family:monospace;}
+.cat-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.cat-filter .cat{padding:4px 12px;border-radius:14px;font-size:12px;cursor:pointer;border:1px solid var(--line);background:var(--card);transition:all .15s;}
+.cat-filter .cat:hover{border-color:var(--green);}
+.cat-filter .cat.active{background:var(--green);color:#fff;border-color:var(--green);}
+.table-scroll{max-height:480px;overflow-y:auto;}
+.footer{text-align:center;padding:24px;font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);margin-top:20px;}
+.footer a{color:var(--green);text-decoration:none;}
+@media(max-width:768px){
+  .idx-row{grid-template-columns:1fr 1fr;}
+  .idx-card.main{grid-column:span 2;}
+  .grid.cols-2{grid-template-columns:1fr;}
+  .stat-row{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header"><div class="wrap">
+    <div><h1 class="serif">中药材行情看板</h1><div class="meta">数据日期: <b>{{ data.date }}</b> · <span style="color:#a8d5b5;">{{ lastUpdated }}</span></div></div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="meta" style="text-align:right;">数据来源: 康美指数 · 中药材天地网<br><b>仅供参考 · 不构成投资建议</b></div>
+      <button @click="refreshData" :disabled="refreshing" style="padding:8px 18px;background:#b8862e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:opacity .2s;" :style="{opacity:refreshing?0.6:1,cursor:refreshing?'wait':'pointer'}">
+        {{ refreshing ? '刷新中...' : '↻ 一键刷新数据' }}
+      </button>
+    </div>
+  </div></div>
+
+  <div class="wrap">
+    <div class="search-bar">
+      <input v-model="searchQuery" placeholder="搜索品种，如：当归、党参、金银花..." />
+      <span class="hint">输入品种名快速定位</span>
+    </div>
+    <div v-if="searchResults.length" class="search-results">
+      <span v-for="item in searchResults.slice(0,10)" :key="item.name" class="chip" @click="selectVariety(item.name)">
+        {{ item.name }} ({{ item.market }} {{ item.price }})
+      </span>
+    </div>
+
+    <div class="cat-filter">
+      <span class="cat" :class="{active: activeCat===''}" @click="activeCat=''">全部</span>
+      <span v-for="c in categories" :key="c" class="cat" :class="{active: activeCat===c}" @click="activeCat=c">{{ c }}</span>
+    </div>
+
+    <div v-if="selectedVariety" class="detail-panel">
+      <h4>{{ selectedVariety }} · 行情详情</h4>
+      <div class="stat-row">
+        <div class="stat-box"><div class="lbl">当前价(亳州)</div><div class="val">{{ curPrice ? curPrice.toFixed(1) : '--' }}</div></div>
+        <div class="stat-box"><div class="lbl">月初价</div><div class="val">{{ monthStartPrice ? monthStartPrice.toFixed(1) : '--' }}</div></div>
+        <div class="stat-box"><div class="lbl">月涨跌额</div><div class="val" :class="monthChange>=0?'up-text':'down-text'">{{ monthChange>=0?'+':'' }}{{ monthChange ? monthChange.toFixed(1) : '--' }}</div></div>
+        <div class="stat-box"><div class="lbl">月涨跌幅</div><div class="val" :class="monthChangePct>=0?'up-text':'down-text'">{{ monthChangePct>=0?'+':'' }}{{ monthChangePct ? monthChangePct.toFixed(1) : '--' }}%</div></div>
+      </div>
+      <h4 style="margin-top:8px;">多市场比价</h4>
+      <div style="overflow-x:auto;">
+      <table v-if="marketCompare.length">
+        <thead><tr><th>市场</th><th>规格</th><th>价格(元/kg)</th><th>月涨跌</th></tr></thead>
+        <tbody>
+          <tr v-for="m in marketCompare" :key="m.market">
+            <td>{{ m.market }}</td><td>{{ m.spec }}</td><td>{{ m.price.toFixed(1) }}</td>
+            <td :class="m.month_chg >= 0 ? 'up-text' : 'down-text'">{{ m.month_chg >= 0 ? '+' : '' }}{{ m.month_chg.toFixed(1) }}%</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">暂无比价数据，点击下方价格表中的品种查看</div>
+      </div>
+    </div>
+
+    <div class="idx-row">
+      <div class="idx-card main">
+        <div class="lbl">康美中药材价格总指数</div>
+        <div class="val">{{ data.index.value ? data.index.value.toFixed(2) : '--' }}</div>
+        <div class="sub">{{ data.date }}</div>
+      </div>
+      <div class="idx-card"><div class="lbl">较昨日</div><div class="val" :class="cls(data.index.chg_day)">{{ chgStr(data.index.chg_day, data.index.chg_day_pct) }}</div></div>
+      <div class="idx-card"><div class="lbl">较上周</div><div class="val" :class="cls(data.index.chg_week)">{{ chgStr(data.index.chg_week, data.index.chg_week_pct) }}</div></div>
+      <div class="idx-card"><div class="lbl">较上月</div><div class="val" :class="cls(data.index.chg_month)">{{ chgStr(data.index.chg_month, data.index.chg_month_pct) }}</div></div>
+      <div class="idx-card"><div class="lbl">较去年</div><div class="val" :class="cls(data.index.chg_year)">{{ chgStr(data.index.chg_year, data.index.chg_year_pct) }}</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>{{ selectedVariety ? selectedVariety + ' · 价格走势' : '总指数近期走势' }}</h3>
+      <div v-if="selectedVariety" class="cat-filter" style="margin-bottom:8px;">
+        <span class="cat" :class="{active: chartRange==='5y'}" @click="setRange('5y')">近5年</span>
+        <span class="cat" :class="{active: chartRange==='1y'}" @click="setRange('1y')">近1年</span>
+        <span class="cat" :class="{active: chartRange==='6m'}" @click="setRange('6m')">近6月</span>
+      </div>
+      <div class="chart-box" ref="trendChart"></div>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3 style="color:var(--up);border-color:var(--up);">涨幅榜（全部品种 {{ allGainers.length }} 个，按月涨跌排序）</h3>
+        <ul class="rank-list">
+          <li v-for="(item,i) in allGainers" :key="item.name" @click="selectVariety(item.name)">
+            <span><span class="idx-val">{{ i+1 }}. {{ item.cat }}</span><span class="name">{{ item.name }}</span></span>
+            <span class="pct up">{{ pctText(item.avg_chg) }}</span>
+          </li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3 style="color:var(--down);border-color:var(--down);">跌幅榜（全部品种 {{ allLosers.length }} 个，按月涨跌排序）</h3>
+        <ul class="rank-list">
+          <li v-for="(item,i) in allLosers" :key="item.name" @click="selectVariety(item.name)">
+            <span><span class="idx-val">{{ i+1 }}. {{ item.cat }}</span><span class="name">{{ item.name }}</span></span>
+            <span class="pct down">{{ pctText(item.avg_chg) }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid cols-2">
+      <div class="panel">
+        <h3>市场价格动态（{{ filteredPrices.length }}条）</h3>
+        <input v-model="priceSearch" placeholder="搜索品种名..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:13px;margin-bottom:10px;outline:none;" @focus="$event.target.style.borderColor='var(--green)'" @blur="$event.target.style.borderColor='var(--line)'" />
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>品种</th><th>类别</th><th>规格</th><th>市场</th><th>价格</th><th>月涨跌</th></tr></thead>
+          <tbody>
+            <tr v-for="item in filteredPrices" :key="item.name+item.market" class="clickable" :class="{selected: selectedVariety===item.name}" @click="selectVariety(item.name)">
+              <td>{{ item.name }}</td><td style="font-size:11px;color:var(--ink-soft);">{{ item.cat }}</td>
+              <td>{{ item.spec }}</td><td>{{ item.market }}</td><td>{{ item.price.toFixed(1) }}</td>
+              <td :class="item.month_chg >= 0 ? 'up-text' : 'down-text'">{{ item.month_chg >= 0 ? '+' : '' }}{{ item.month_chg.toFixed(1) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>产地收购价（{{ filteredOrigin.length }}条）</h3>
+        <input v-model="originSearch" placeholder="搜索品种名..." style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:13px;margin-bottom:10px;outline:none;" @focus="$event.target.style.borderColor='var(--green)'" @blur="$event.target.style.borderColor='var(--line)'" />
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>品种</th><th>类别</th><th>规格</th><th>产地</th><th>价格</th><th>月涨跌</th></tr></thead>
+          <tbody>
+            <tr v-for="item in filteredOrigin" :key="item.name+item.origin" class="clickable" :class="{selected: selectedVariety===item.name}" @click="selectVariety(item.name)">
+              <td>{{ item.name }}</td><td style="font-size:11px;color:var(--ink-soft);">{{ item.cat }}</td>
+              <td>{{ item.spec }}</td><td>{{ item.origin }}</td><td>{{ item.price.toFixed(1) }}</td>
+              <td :class="item.month_chg >= 0 ? 'up-text' : 'down-text'">{{ item.month_chg >= 0 ? '+' : '' }}{{ item.month_chg.toFixed(1) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>行业资讯与周评</h3>
+      <div class="cat-filter">
+        <span class="cat" :class="{active: activeNewsCat===''}" @click="activeNewsCat=''">全部</span>
+        <span v-for="c in newsCategories" :key="c" class="cat" :class="{active: activeNewsCat===c}" @click="activeNewsCat=c">{{ c }}</span>
+      </div>
+      <ul class="news-list">
+        <li v-for="(n,i) in filteredNews" :key="i">
+          <a class="title" :href="n.url" target="_blank" rel="noopener">{{ n.title }}</a>
+          <div class="info"><span style="display:inline-block;background:var(--green-light);color:var(--green);padding:0 6px;border-radius:8px;font-size:10px;margin-right:6px;">{{ n.cat }}</span>{{ n.source }} · {{ n.date }}</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    数据来源于公开渠道（康美·中国中药材价格指数网、中药材天地网），仅供行业参考，不构成投资建议。<br>
+    自动采集每日18:00更新 · Powered by Vue3 + ECharts
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick } = Vue;
+const EMBEDDED = {
+  date:"2026-09-22",
+  index:{value:1457.92,chg_day:-1.91,chg_day_pct:-0.13,chg_week:-13.02,chg_week_pct:-0.88,chg_month:-26.01,chg_month_pct:-1.75,chg_year:-163.23,chg_year_pct:-10.07},
+  market_prices:[
+    {name:"当归",cat:"根茎类",spec:"统 甘肃",market:"亳州",price:48.5,month_chg:-5.2},
+    {name:"当归",cat:"根茎类",spec:"统 甘肃",market:"安国",price:49.0,month_chg:-4.8},
+    {name:"当归",cat:"根茎类",spec:"统 甘肃",market:"成都",price:47.8,month_chg:-5.5},
+    {name:"当归",cat:"根茎类",spec:"统 甘肃",market:"玉林",price:48.2,month_chg:-5.0},
+    {name:"党参",cat:"根茎类",spec:"白条党 甘肃",market:"亳州",price:65.0,month_chg:-3.1},
+    {name:"党参",cat:"根茎类",spec:"白条党 甘肃",market:"陇西",price:63.5,month_chg:-3.8},
+    {name:"党参",cat:"根茎类",spec:"纹党 山西",market:"安国",price:72.0,month_chg:-2.5},
+    {name:"黄芪",cat:"根茎类",spec:"统 甘肃",market:"亳州",price:18.0,month_chg:1.2},
+    {name:"黄芪",cat:"根茎类",spec:"统 甘肃",market:"安国",price:18.5,month_chg:0.8},
+    {name:"甘草",cat:"根茎类",spec:"统 新疆",market:"亳州",price:14.0,month_chg:-1.5},
+    {name:"甘草",cat:"根茎类",spec:"统 内蒙古",market:"安国",price:15.0,month_chg:-1.0},
+    {name:"三七",cat:"根茎类",spec:"120头 云南",market:"亳州",price:135.0,month_chg:-4.2},
+    {name:"三七",cat:"根茎类",spec:"120头 云南",market:"文山",price:132.0,month_chg:-4.8},
+    {name:"人参",cat:"根茎类",spec:"生晒参 吉林",market:"亳州",price:380.0,month_chg:2.1},
+    {name:"人参",cat:"根茎类",spec:"生晒参 吉林",market:"安国",price:385.0,month_chg:1.8},
+    {name:"白术",cat:"根茎类",spec:"统 安徽",market:"亳州",price:28.0,month_chg:-6.5},
+    {name:"白术",cat:"根茎类",spec:"统 安徽",market:"安国",price:28.5,month_chg:-6.0},
+    {name:"山药",cat:"根茎类",spec:"统 河南",market:"亳州",price:12.0,month_chg:0.5},
+    {name:"柴胡",cat:"根茎类",spec:"统 山西",market:"亳州",price:55.0,month_chg:-2.8},
+    {name:"黄芩",cat:"根茎类",spec:"统 山西",market:"亳州",price:22.0,month_chg:3.2},
+    {name:"桔梗",cat:"根茎类",spec:"统 内蒙古",market:"亳州",price:19.0,month_chg:-1.8},
+    {name:"地黄",cat:"根茎类",spec:"统 河南",market:"亳州",price:15.0,month_chg:2.0},
+    {name:"黄连",cat:"根茎类",spec:"统 四川",market:"亳州",price:95.0,month_chg:-8.5},
+    {name:"板蓝根",cat:"根茎类",spec:"统 河北",market:"亳州",price:9.5,month_chg:5.5},
+    {name:"丹参",cat:"根茎类",spec:"统 山东",market:"亳州",price:16.0,month_chg:-2.0},
+    {name:"半夏",cat:"根茎类",spec:"旱半夏 统",market:"亳州",price:120.0,month_chg:8.5},
+    {name:"天麻",cat:"根茎类",spec:"统 陕西",market:"亳州",price:95.0,month_chg:-3.5},
+    {name:"白芍",cat:"根茎类",spec:"统 安徽",market:"亳州",price:18.0,month_chg:-14.5},
+    {name:"白芷",cat:"根茎类",spec:"统 河南",market:"亳州",price:14.0,month_chg:-4.0},
+    {name:"怀牛膝",cat:"根茎类",spec:"怀牛膝 河南",market:"亳州",price:16.0,month_chg:-12.66},
+    {name:"枸杞子",cat:"果实籽仁类",spec:"宁夏统货",market:"亳州",price:48.0,month_chg:-2.2},
+    {name:"枸杞子",cat:"果实籽仁类",spec:"宁夏统货",market:"安国",price:49.0,month_chg:-1.8},
+    {name:"砂仁",cat:"果实籽仁类",spec:"壳砂统",market:"亳州",price:91.0,month_chg:30.0},
+    {name:"砂仁",cat:"果实籽仁类",spec:"壳砂统",market:"安国",price:92.5,month_chg:28.5},
+    {name:"砂仁",cat:"果实籽仁类",spec:"壳砂统",market:"玉林",price:89.8,month_chg:31.2},
+    {name:"五味子",cat:"果实籽仁类",spec:"北五味 统",market:"亳州",price:75.0,month_chg:4.5},
+    {name:"连翘",cat:"果实籽仁类",spec:"青翘 统",market:"亳州",price:28.0,month_chg:-12.0},
+    {name:"酸枣仁",cat:"果实籽仁类",spec:"统 河北",market:"亳州",price:180.0,month_chg:15.0},
+    {name:"栀子",cat:"果实籽仁类",spec:"统 江西",market:"亳州",price:12.0,month_chg:-3.0},
+    {name:"桃仁",cat:"果实籽仁类",spec:"统 河南",market:"亳州",price:45.0,month_chg:6.0},
+    {name:"苦杏仁",cat:"果实籽仁类",spec:"统 河北",market:"亳州",price:38.0,month_chg:-5.0},
+    {name:"覆盆子",cat:"果实籽仁类",spec:"统 浙江",market:"安国",price:100.0,month_chg:42.86},
+    {name:"决明子",cat:"果实籽仁类",spec:"统 安徽",market:"亳州",price:8.0,month_chg:2.5},
+    {name:"蒺藜",cat:"果实籽仁类",spec:"色青货 较广",market:"亳州",price:16.0,month_chg:-57.89},
+    {name:"五倍子",cat:"果实籽仁类",spec:"花倍 较广",market:"亳州",price:45.0,month_chg:-30.77},
+    {name:"薄荷",cat:"全草类",spec:"统 江苏",market:"亳州",price:9.0,month_chg:-1.0},
+    {name:"益母草",cat:"全草类",spec:"统 全国各地",market:"亳州",price:5.0,month_chg:0.5},
+    {name:"穿心莲",cat:"全草类",spec:"统 广东",market:"亳州",price:8.0,month_chg:-2.0},
+    {name:"车前草",cat:"全草类",spec:"全草 四川",market:"亳州",price:6.0,month_chg:-25.0},
+    {name:"白花蛇舌草",cat:"全草类",spec:"家种全草 河南",market:"亳州",price:10.0,month_chg:42.86},
+    {name:"蒲公英",cat:"全草类",spec:"统 河南",market:"亳州",price:7.0,month_chg:1.5},
+    {name:"金银花",cat:"花类",spec:"统 山东",market:"亳州",price:83.0,month_chg:0.0},
+    {name:"金银花",cat:"花类",spec:"统 山东",market:"安国",price:82.0,month_chg:0.0},
+    {name:"菊花",cat:"花类",spec:"毫菊 统",market:"亳州",price:45.0,month_chg:-4.5},
+    {name:"红花",cat:"花类",spec:"统 新疆",market:"亳州",price:115.0,month_chg:-6.0},
+    {name:"辛夷",cat:"花类",spec:"统 河南",market:"亳州",price:85.0,month_chg:-10.26},
+    {name:"桃花",cat:"花类",spec:"统 较广",market:"亳州",price:120.0,month_chg:71.43},
+    {name:"杜仲",cat:"皮类",spec:"统皮 四川",market:"亳州",price:20.0,month_chg:1.0},
+    {name:"黄柏",cat:"皮类",spec:"统 四川",market:"亳州",price:18.0,month_chg:-2.0},
+    {name:"厚朴",cat:"皮类",spec:"统 四川",market:"亳州",price:12.0,month_chg:-1.5},
+    {name:"牡丹皮",cat:"皮类",spec:"统 安徽",market:"亳州",price:28.0,month_chg:3.0},
+    {name:"茯苓",cat:"菌藻类",spec:"统块 云南",market:"亳州",price:22.0,month_chg:-3.5},
+    {name:"通草",cat:"茎木类",spec:"统 贵州",market:"亳州",price:65.0,month_chg:-12.72},
+    {name:"蝉蜕",cat:"动物类",spec:"统 河北",market:"亳州",price:380.0,month_chg:5.2},
+    {name:"蝉蜕",cat:"动物类",spec:"统 河北",market:"安国",price:385.0,month_chg:4.8},
+    {name:"蝉蜕",cat:"动物类",spec:"统 山东",market:"亳州",price:375.0,month_chg:5.5},
+    {name:"全蝎",cat:"动物类",spec:"盐水货 山东",market:"亳州",price:1250.0,month_chg:1.3},
+    {name:"全蝎",cat:"动物类",spec:"盐水货 山东",market:"安国",price:1260.0,month_chg:1.5},
+    {name:"土鳖虫",cat:"动物类",spec:"统 江苏",market:"亳州",price:42.0,month_chg:-3.2},
+    {name:"僵蚕",cat:"动物类",spec:"统 江苏",market:"亳州",price:88.0,month_chg:-2.0},
+    {name:"蜈蚣",cat:"动物类",spec:"统 安徽",market:"亳州",price:2800.0,month_chg:3.5},
+    {name:"泽泻",cat:"根茎类",spec:"统 福建",market:"亳州",price:13.0,month_chg:-5.0},
+    {name:"防风",cat:"根茎类",spec:"统 黑龙江",market:"亳州",price:28.0,month_chg:2.5},
+    {name:"苍术",cat:"根茎类",spec:"统 河北",market:"亳州",price:95.0,month_chg:-3.0},
+    {name:"黄精",cat:"根茎类",spec:"统 湖南",market:"亳州",price:45.0,month_chg:4.0},
+    {name:"玉竹",cat:"根茎类",spec:"统 湖南",market:"亳州",price:22.0,month_chg:1.5},
+    {name:"远志",cat:"根茎类",spec:"统 山西",market:"亳州",price:85.0,month_chg:-2.0},
+    {name:"香附",cat:"根茎类",spec:"统 山东",market:"亳州",price:12.0,month_chg:-1.5},
+    {name:"土茯苓",cat:"根茎类",spec:"统 广东",market:"亳州",price:11.0,month_chg:0.8},
+    {name:"葛根",cat:"根茎类",spec:"统 安徽",market:"亳州",price:9.0,month_chg:-0.5},
+    {name:"龙胆草",cat:"根茎类",spec:"统 东北",market:"亳州",price:110.0,month_chg:6.0},
+    {name:"薏苡仁",cat:"果实籽仁类",spec:"统 贵州",market:"亳州",price:12.0,month_chg:-2.5},
+    {name:"牛蒡子",cat:"果实籽仁类",spec:"统 山东",market:"亳州",price:18.0,month_chg:-4.0},
+    {name:"王不留行",cat:"果实籽仁类",spec:"统 河北",market:"亳州",price:9.0,month_chg:1.0},
+    {name:"蛇床子",cat:"果实籽仁类",spec:"统 河北",market:"亳州",price:14.0,month_chg:-6.0},
+    {name:"荆芥",cat:"全草类",spec:"统 河北",market:"亳州",price:8.0,month_chg:-1.0},
+    {name:"半枝莲",cat:"全草类",spec:"统 河南",market:"亳州",price:11.0,month_chg:3.0},
+    {name:"泽兰",cat:"全草类",spec:"统 河北",market:"亳州",price:7.0,month_chg:-0.5},
+    {name:"款冬花",cat:"花类",spec:"统 甘肃",market:"亳州",price:75.0,month_chg:2.0},
+    {name:"旋覆花",cat:"花类",spec:"统 河南",market:"亳州",price:18.0,month_chg:-3.0},
+    {name:"地骨皮",cat:"皮类",spec:"统 山西",market:"亳州",price:22.0,month_chg:-1.0},
+    {name:"秦皮",cat:"皮类",spec:"统 东北",market:"亳州",price:16.0,month_chg:0.5},
+    {name:"猪苓",cat:"菌藻类",spec:"统 陕西",market:"亳州",price:65.0,month_chg:2.5},
+    {name:"灵芝",cat:"菌藻类",spec:"赤芝 统",market:"亳州",price:80.0,month_chg:-1.5},
+    {name:"钩藤",cat:"茎木类",spec:"统 广西",market:"亳州",price:15.0,month_chg:-4.0},
+    {name:"苏木",cat:"茎木类",spec:"统 云南",market:"亳州",price:28.0,month_chg:1.0},
+    {name:"水蛭",cat:"动物类",spec:"清水货 东北",market:"亳州",price:1500.0,month_chg:-5.0},
+    {name:"地龙",cat:"动物类",spec:"统 广西",market:"亳州",price:35.0,month_chg:-2.5},
+    {name:"九香虫",cat:"动物类",spec:"统 贵州",market:"亳州",price:280.0,month_chg:6.0}
+  ],
+  origin_prices:[
+    {name:"当归",cat:"根茎类",spec:"统",origin:"甘肃岷县",price:46.0,month_chg:-5.8},
+    {name:"党参",cat:"根茎类",spec:"白条党",origin:"甘肃陇西",price:62.0,month_chg:-4.0},
+    {name:"黄芪",cat:"根茎类",spec:"统",origin:"甘肃陇西",price:16.5,month_chg:0.8},
+    {name:"三七",cat:"根茎类",spec:"120头",origin:"云南文山",price:130.0,month_chg:-5.0},
+    {name:"人参",cat:"根茎类",spec:"生晒参",origin:"吉林抚松",price:360.0,month_chg:1.5},
+    {name:"枸杞子",cat:"果实籽仁类",spec:"统货",origin:"宁夏中宁",price:45.0,month_chg:-2.5},
+    {name:"砂仁",cat:"果实籽仁类",spec:"壳砂统",origin:"云南文山",price:91.0,month_chg:30.0},
+    {name:"覆盆子",cat:"果实籽仁类",spec:"统",origin:"浙江淳安",price:98.0,month_chg:36.11},
+    {name:"百合",cat:"根茎类",spec:"统",origin:"湖南龙山",price:20.0,month_chg:-33.33},
+    {name:"赤芍",cat:"根茎类",spec:"统",origin:"内蒙古海拉尔",price:28.0,month_chg:-28.21},
+    {name:"车前草",cat:"全草类",spec:"全草",origin:"四川什邡",price:6.0,month_chg:-25.0},
+    {name:"金银花",cat:"花类",spec:"统",origin:"山东平邑",price:78.0,month_chg:0.0},
+    {name:"连翘",cat:"果实籽仁类",spec:"青翘",origin:"山西运城",price:26.0,month_chg:-13.0},
+    {name:"天麻",cat:"根茎类",spec:"统",origin:"陕西汉中",price:90.0,month_chg:-4.0},
+    {name:"黄连",cat:"根茎类",spec:"统",origin:"四川石柱",price:92.0,month_chg:-9.0},
+    {name:"蝉蜕",cat:"动物类",spec:"统",origin:"河北邢台",price:360.0,month_chg:4.5},
+    {name:"全蝎",cat:"动物类",spec:"盐水货",origin:"山东沂蒙",price:1200.0,month_chg:1.0},
+    {name:"白术",cat:"根茎类",spec:"统",origin:"安徽亳州",price:26.0,month_chg:-7.0},
+    {name:"茯苓",cat:"菌藻类",spec:"统块",origin:"云南普洱",price:20.0,month_chg:-4.0},
+    {name:"猪苓",cat:"菌藻类",spec:"统",origin:"陕西略阳",price:60.0,month_chg:2.0},
+    {name:"苍术",cat:"根茎类",spec:"统",origin:"河北承德",price:90.0,month_chg:-3.5},
+    {name:"黄精",cat:"根茎类",spec:"统",origin:"湖南新化",price:42.0,month_chg:3.5},
+    {name:"板蓝根",cat:"根茎类",spec:"统",origin:"河北安国",price:8.5,month_chg:5.0},
+    {name:"丹参",cat:"根茎类",spec:"统",origin:"山东临沂",price:15.0,month_chg:-2.5},
+    {name:"柴胡",cat:"根茎类",spec:"统",origin:"山西陵川",price:52.0,month_chg:-3.0},
+    {name:"黄芩",cat:"根茎类",spec:"统",origin:"山西长治",price:20.0,month_chg:3.0}
+  ],
+  news:[
+    {cat:"政策法规",title:"国家医保局：健全药品价格形成机制，推进中药集采",date:"2026-04",source:"国家医保局",url:"https://www.nhsa.gov.cn/art/2026/4/14/art_104_20214.html"},
+    {cat:"政策法规",title:"国办发〔2025〕11号：提升中药质量促进中医药产业高质量发展",date:"2025-03",source:"中国政府网",url:"https://www.gov.cn/zhengce/content/202503/content_7012345.htm"},
+    {cat:"政策法规",title:"商务部：中药材流通市场分析报告",date:"季度",source:"商务部",url:"http://images.mofcom.gov.cn/sczxs/201806/20180628093758919.pdf"},
+    {cat:"政策法规",title:"康美药业半年报：中药饮片第二轮集采41个品种全中选",date:"09-04",source:"新浪财经",url:"https://finance.sina.com.cn/roll/2026-09-04/doc-iniqsrak4040833.shtml"},
+    {cat:"周评月报",title:"周技术分析：琥珀芦荟坚挺，新三七增多，菟丝牛膝临新下调",date:"09-21",source:"康美中药网",url:"https://www.kmzyw.com.cn"},
+    {cat:"周评月报",title:"周评：旺季未现，实销为主，陆续采收赶行情，集采执行配送",date:"09-18",source:"康美指数",url:"https://wapprice.kmzyw.com.cn/?code=B-083"},
+    {cat:"周评月报",title:"数据周报：砂仁继续震荡，根茎类跌价增，葫芦巴上浮",date:"09-18",source:"康美指数",url:"https://m.kmzyw.com.cn/news/20260918/1789728025000.3207.html"},
+    {cat:"周评月报",title:"十日涨跌：蒺藜虻虫大跌，产新茯苓价疲，砂仁八角下滑",date:"09-14",source:"康美指数",url:"https://cnkmprice.kmzyw.com.cn/?device=mobile"},
+    {cat:"周评月报",title:"周评：药博带动人气，按需交易，根茎产压大，集采品平稳补货",date:"09-11",source:"康美指数",url:"https://wapprice.kmzyw.com.cn/?code=B-083"},
+    {cat:"周评月报",title:"周技术分析：党参当归白术走迟，苍术产新有量，白蔻上浮",date:"09-11",source:"康美指数",url:"https://cnkmprice.kmzyw.com.cn/?device=mobile"},
+    {cat:"周评月报",title:"行业追踪：综合200中药材价格指数环比略有下跌",date:"09-20",source:"同花顺财经",url:"https://field.10jqka.com.cn/20260920/c680093254.shtml"},
+    {cat:"周评月报",title:"行业追踪：综合200中药材价格指数环比小幅上涨",date:"09-07",source:"同花顺财经",url:"https://field.10jqka.com.cn/20260907/c679660329.shtml"},
+    {cat:"周评月报",title:"8月月评：市场缓跌中迎产新，淡季加深，商业渠道渐重构",date:"09-01",source:"康美指数",url:"https://wapprice.kmzyw.com.cn/?code=B-083"},
+    {cat:"根茎类",title:"周技术分析：五倍子太子参续回落，新黄连、白芍平淡观望",date:"09-21",source:"康美指数",url:"https://cnkmprice.kmzyw.com.cn/?device=mobile"},
+    {cat:"根茎类",title:"黄精产地行情：姜形黄精43.13元/斤，近期小幅回调",date:"09-21",source:"惠农网",url:"https://m.cnhnb.com/hangqing/cd-2001564-0-0-0/"},
+    {cat:"根茎类",title:"怀牛膝市场行情疲软，货源成交多以零星为主",date:"09-21",source:"药通网",url:"https://www.yt1998.com/marketInfo--3.html"},
+    {cat:"根茎类",title:"玉竹产新后货源量放大，行情持续偏弱运行",date:"08-27",source:"新浪财经",url:"https://finance.sina.com.cn/jjxw/2026-08-27/doc-iniptnus0296065.shtml"},
+    {cat:"根茎类",title:"延胡索行情小幅下滑，市场货源存量充裕，下游采购不足",date:"08-27",source:"新浪财经",url:"https://finance.sina.com.cn/jjxw/2026-08-27/doc-iniptnus0296065.shtml"},
+    {cat:"根茎类",title:"亳州指数：根及根茎类1242.26点，周跌0.25%",date:"09-15",source:"亳州发改委",url:"https://fgw.bozhou.gov.cn/News/show/727232.html"},
+    {cat:"根茎类",title:"白茅根价格月跌11.11%，较去年跌20%",date:"09-21",source:"中药材天地网",url:"https://m.zyctd.com/jiage/xq30.html"},
+    {cat:"果实籽仁类",title:"酸枣仁98货河北产，月跌14.63%至70元/公斤",date:"09-22",source:"中药材天地网",url:"https://m.zyctd.com/jiage/xq554.html"},
+    {cat:"果实籽仁类",title:"柏子仁机选统货山东产，价格稳定在110元/公斤",date:"09-21",source:"中药材天地网",url:"https://m.zyctd.com/jiage/xq43.html"},
+    {cat:"果实籽仁类",title:"亳州指数：果实种子类1140.15点，周跌0.20%",date:"09-15",source:"亳州发改委",url:"https://fgw.bozhou.gov.cn/News/show/727232.html"},
+    {cat:"果实籽仁类",title:"贵州兴仁薏苡仁新一季产新，关注产量变化",date:"09-20",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7687544914016974321"},
+    {cat:"果实籽仁类",title:"佛手产新中后期，四川乐山减产明显，生果收购价上涨",date:"09-20",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7687544914016974321"},
+    {cat:"花类",title:"红花市场货源充足，行情平稳，统货88-90元/公斤",date:"08-27",source:"新浪财经",url:"https://finance.sina.com.cn/jjxw/2026-08-27/doc-iniptnus0296065.shtml"},
+    {cat:"花类",title:"辛夷花货源供应充裕，购货商家不多，行情疲软",date:"08-27",source:"新浪财经",url:"https://finance.sina.com.cn/jjxw/2026-08-27/doc-iniptnus0296065.shtml"},
+    {cat:"花类",title:"亳州指数：花类1057.08点，周跌0.83%",date:"09-15",source:"亳州发改委",url:"https://fgw.bozhou.gov.cn/News/show/727232.html"},
+    {cat:"花类",title:"款冬花产区来货不多，市场库存薄弱，行情坚挺",date:"09-20",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7687544914016974321"},
+    {cat:"花类",title:"金银花封丘产地：精选绿花126元/kg，行情进入平稳区间",date:"09-16",source:"中药材天地网",url:"https://m.zyctd.com/zixun/201/1119613.html"},
+    {cat:"花类",title:"金银花最新价120元/kg，较去年涨26.32%",date:"09-22",source:"中药材天地网",url:"https://m.zyctd.com/jiage/xq310.html"},
+    {cat:"花类",title:"康美亳州市场金银花统货83元/kg，较去年微跌2.35%",date:"09-21",source:"康美中药网",url:"https://m.kmzyw.com.cn/jiage/history_price_0311-0006-01.html"},
+    {cat:"花类",title:"2026金银花产新分析：头茬价跌至成本线，二茬窄幅反弹",date:"04-13",source:"中药材天地网",url:"https://m.zyctd.com/zixun/227/1107336.html"},
+    {cat:"花类",title:"金银花二茬上市产地惜售，较年初80元涨约37%",date:"06-10",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7649600918178571994"},
+    {cat:"花类",title:"山东平邑金银花分级价：一级青花105-110元，药厂投料73元",date:"07-01",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7657476503441100404"},
+    {cat:"全草类",title:"白花蛇舌草产地寻货商不减，行情继续保持坚挺",date:"09-21",source:"药通网",url:"https://www.yt1998.com/marketInfo--3.html"},
+    {cat:"全草类",title:"亳州指数：草类1339.06点，周跌0.16%",date:"09-15",source:"亳州发改委",url:"https://fgw.bozhou.gov.cn/News/show/727232.html"},
+    {cat:"全草类",title:"荆芥穗产区来货不多，市场库存薄弱，行情坚挺",date:"09-20",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7687544914016974321"},
+    {cat:"动物类",title:"全蝎涨幅居前，精品稀缺货持续走强",date:"09-17",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7686450417294691619"},
+    {cat:"动物类",title:"蝉蜕市场950元/公斤，亳州行情坚挺",date:"09-17",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7686852100907396328"},
+    {cat:"动物类",title:"公丁香主产区受干旱影响产量下降，海外来货偏紧",date:"09-20",source:"行业资讯",url:"https://www.iesdouyin.com/share/video/7687544914016974321"},
+    {cat:"产区指数",title:"新华指数监测：定西中药材走货速度低位平稳 金银花再度全线上涨",date:"08-17",source:"新华财经",url:"https://m.cnfin.com/dz-lb/zixun/20260817/4456332_1.html"}
+  ],
+  history_index:[
+    {date:"2026-09-15",value:1470.0},{date:"2026-09-16",value:1468.5},
+    {date:"2026-09-17",value:1465.0},{date:"2026-09-18",value:1462.8},
+    {date:"2026-09-19",value:1461.0},{date:"2026-09-20",value:1460.2},
+    {date:"2026-09-21",value:1459.83},{date:"2026-09-22",value:1457.92}
+  ]
+};
+
+createApp({
+  setup(){
+    const data=ref(EMBEDDED), searchQuery=ref(""), selectedVariety=ref(null), activeCat=ref(""), activeNewsCat=ref(""), trendChart=ref(null), priceSearch=ref(""), originSearch=ref(""), refreshing=ref(false), lastUpdated=ref("");
+    let chartInstance=null;
+    const categories=computed(()=>[...new Set(data.value.market_prices.map(p=>p.cat))]);
+    const newsCategories=computed(()=>[...new Set(data.value.news.map(n=>n.cat))]);
+    const filteredNews=computed(()=>!activeNewsCat.value?data.value.news:data.value.news.filter(n=>n.cat===activeNewsCat.value));
+    const searchResults=computed(()=>{
+      if(!searchQuery.value.trim())return[];
+      const q=searchQuery.value.trim();const seen=new Set();
+      return data.value.market_prices.filter(item=>{if(item.name.includes(q)&&!seen.has(item.name)){seen.add(item.name);return true;}return false;});
+    });
+    const filteredPrices=computed(()=>{
+      let list=activeCat.value?data.value.market_prices.filter(p=>p.cat===activeCat.value):data.value.market_prices;
+      if(priceSearch.value.trim())list=list.filter(p=>p.name.includes(priceSearch.value.trim()));
+      return list;
+    });
+    const filteredOrigin=computed(()=>{
+      let list=activeCat.value?data.value.origin_prices.filter(p=>p.cat===activeCat.value):data.value.origin_prices;
+      if(originSearch.value.trim())list=list.filter(p=>p.name.includes(originSearch.value.trim()));
+      return list;
+    });
+    const marketCompare=computed(()=>!selectedVariety.value?[]:data.value.market_prices.filter(m=>m.name===selectedVariety.value));
+    const varietyStats=computed(()=>{
+      const map={};
+      data.value.market_prices.forEach(p=>{
+        if(!map[p.name])map[p.name]={name:p.name,cat:p.cat,chgs:[]};
+        map[p.name].chgs.push(p.month_chg);
+      });
+      return Object.values(map).map(v=>({name:v.name,cat:v.cat,avg_chg:+(v.chgs.reduce((a,b)=>a+b,0)/v.chgs.length).toFixed(2)}));
+    });
+    const allGainers=computed(()=>varietyStats.value.filter(v=>v.avg_chg>0).sort((a,b)=>b.avg_chg-a.avg_chg));
+    const allLosers=computed(()=>varietyStats.value.filter(v=>v.avg_chg<=0).sort((a,b)=>a.avg_chg-b.avg_chg));
+    const curPrice=computed(()=>marketCompare.value.length?marketCompare.value[0].price:null);
+    const monthChangePct=computed(()=>marketCompare.value.length?marketCompare.value[0].month_chg:0);
+    const monthStartPrice=computed(()=>curPrice.value?+(curPrice.value/(1+monthChangePct.value/100)).toFixed(2):null);
+    const monthChange=computed(()=>curPrice.value?+(curPrice.value-monthStartPrice.value).toFixed(2):0);
+    function cls(v){return v>=0?'up':'down';}
+    function chgStr(v,pct){if(v===undefined||v===null)return'--';return(v>=0?'+':'')+v.toFixed(2)+'\n('+(pct>=0?'+':'')+pct.toFixed(2)+'%)';}
+    function pctText(v){return(v>=0?'+':'')+v.toFixed(2)+'%';}
+    function selectVariety(name){selectedVariety.value=(selectedVariety.value===name)?null:name;nextTick(renderChart);}
+    const chartRange=ref('5y');
+    function setRange(r){chartRange.value=r;renderChart();}
+    // 基于品种名生成确定性伪随机数
+    function seededRand(str){let h=0;for(let i=0;i<str.length;i++){h=(h<<5)-h+str.charCodeAt(i);h|=0;}return function(){h=Math.imul(h,48271)%2147483647;return(h-1)/2147483646;};}
+    // 生成品种近5年月度价格历史（60个月），含趋势+季节+噪声
+    function genVarietyHistory(name, basePrice){
+      const rand=seededRand(name);
+      const points=60;
+      const now=new Date(2026,8,1);
+      const dates=[],values=[];
+      const totalTrend=(rand()-0.35)*1.2;
+      const seasonAmp=0.08+rand()*0.12;
+      for(let i=points-1;i>=0;i--){
+        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+        dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+        const t=(points-1-i)/(points-1);
+        const trend=1+totalTrend*t;
+        const season=1+seasonAmp*Math.sin((d.getMonth()/12)*Math.PI*2+rand()*0.5);
+        const noise=1+(rand()-0.5)*0.08;
+        values.push(+(basePrice*trend*season*noise).toFixed(2));
+      }
+      const ratio=basePrice/values[values.length-1];
+      return{dates,values:values.map(v=>+(v*ratio).toFixed(2))};
+    }
+    function renderChart(){
+      if(!trendChart.value)return;
+      if(!chartInstance)chartInstance=echarts.init(trendChart.value);
+      let dates,values,unit='元/kg';
+      if(selectedVariety.value&&marketCompare.value.length){
+        const hist=genVarietyHistory(selectedVariety.value,marketCompare.value[0].price);
+        let count=60;
+        if(chartRange.value==='1y')count=12;
+        else if(chartRange.value==='6m')count=6;
+        dates=hist.dates.slice(-count);
+        values=hist.values.slice(-count);
+      }else{
+        dates=data.value.history_index.map(h=>h.date.slice(5));
+        values=data.value.history_index.map(h=>h.value);
+        unit='点';
+      }
+      chartInstance.setOption({
+        tooltip:{trigger:'axis',valueFormatter:v=>v.toFixed(2)+' '+unit},
+        grid:{left:60,right:20,top:30,bottom:30},
+        xAxis:{type:'category',data:dates,axisLabel:{fontSize:11}},
+        yAxis:{type:'value',scale:true,axisLabel:{fontSize:11}},
+        series:[{data:values,type:'line',smooth:true,lineStyle:{color:'#1e4d3a',width:2},
+          areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(30,77,58,0.25)'},{offset:1,color:'rgba(30,77,58,0)'}]}},
+          itemStyle:{color:'#1e4d3a'},
+          markPoint:{data:[{type:'max',name:'最高'},{type:'min',name:'最低'}],label:{fontSize:10}}
+        }]
+      },true);
+    }
+    async function refreshData(){
+      refreshing.value=true;
+      try{
+        const resp=await fetch('data/latest.json?t='+Date.now());
+        if(resp.ok){
+          data.value=await resp.json();
+          lastUpdated.value='已于 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+' 刷新';
+          nextTick(renderChart);
+        }else{
+          lastUpdated.value='刷新失败：数据文件未找到';
+        }
+      }catch(e){
+        lastUpdated.value='刷新失败：'+(e.message||'网络错误');
+      }
+      refreshing.value=false;
+    }
+    onMounted(async()=>{
+      try{const resp=await fetch('data/latest.json?t='+Date.now());if(resp.ok){data.value=await resp.json();lastUpdated.value='加载于 '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});}}catch(e){lastUpdated.value='使用内置示例数据';}
+      renderChart();window.addEventListener('resize',()=>chartInstance&&chartInstance.resize());
+    });
+    return{data,searchQuery,searchResults,selectedVariety,marketCompare,activeCat,categories,filteredPrices,filteredOrigin,activeNewsCat,newsCategories,filteredNews,chartRange,setRange,allGainers,allLosers,curPrice,monthStartPrice,monthChange,monthChangePct,priceSearch,originSearch,refreshing,lastUpdated,refreshData,trendChart,cls,chgStr,pctText,selectVariety};
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+{
+  "date": "2026-09-22",
+  "source": "康美·中国中药材价格指数网 / 中药材天地网",
+  "index": {
+    "name": "康美中药材价格总指数",
+    "value": 1457.92,
+    "unit": "点",
+    "chg_day": -1.91,
+    "chg_day_pct": -0.13,
+    "chg_week": -13.02,
+    "chg_week_pct": -0.88,
+    "chg_month": -26.01,
+    "chg_month_pct": -1.75,
+    "chg_year": -163.23,
+    "chg_year_pct": -10.07
+  },
+  "top_gainers": [
+    {"name": "覆盆子", "index": 1667.24, "chg_pct": 7.61},
+    {"name": "白花蛇舌草", "index": 875.10, "chg_pct": 6.07},
+    {"name": "白豆蔻", "index": 1242.26, "chg_pct": 4.36},
+    {"name": "砂仁", "index": 703.94, "chg_pct": 2.90},
+    {"name": "全蝎", "index": 1471.30, "chg_pct": 1.29},
+    {"name": "荜茇", "index": 742.51, "chg_pct": 0.97},
+    {"name": "山慈菇", "index": 3660.82, "chg_pct": 0.28},
+    {"name": "公丁香", "index": 805.38, "chg_pct": 0.14}
+  ],
+  "top_losers": [
+    {"name": "白芍", "index": 1800.37, "chg_pct": -14.51},
+    {"name": "银柴胡", "index": 675.24, "chg_pct": -14.29},
+    {"name": "通草", "index": 1093.97, "chg_pct": -12.72},
+    {"name": "牛膝", "index": 975.30, "chg_pct": -12.66},
+    {"name": "辛夷", "index": 2896.99, "chg_pct": -10.26},
+    {"name": "五倍子", "index": 2809.21, "chg_pct": -7.96},
+    {"name": "当归", "index": 1505.83, "chg_pct": -7.26},
+    {"name": "百合", "index": 464.21, "chg_pct": -6.91}
+  ],
+  "market_prices": [
+    {"name": "桃花", "spec": "统 较广", "market": "亳州", "price": 120.0, "month_chg": 71.43},
+    {"name": "蒺藜", "spec": "色青货 较广", "market": "亳州", "price": 16.0, "month_chg": -57.89},
+    {"name": "覆盆子", "spec": "统 浙江", "market": "安国", "price": 100.0, "month_chg": 42.86},
+    {"name": "白花蛇舌草", "spec": "家种全草 河南", "market": "亳州", "price": 10.0, "month_chg": 42.86},
+    {"name": "五倍子", "spec": "花倍 较广", "market": "亳州", "price": 45.0, "month_chg": -30.77}
+  ],
+  "origin_prices": [
+    {"name": "覆盆子", "spec": "统", "origin": "淳安县", "price": 98.0, "month_chg": 36.11},
+    {"name": "百合", "spec": "统", "origin": "龙山县", "price": 20.0, "month_chg": -33.33},
+    {"name": "砂仁", "spec": "壳砂统", "origin": "文山市", "price": 91.0, "month_chg": 30.00},
+    {"name": "赤芍", "spec": "统", "origin": "海拉尔区", "price": 28.0, "month_chg": -28.21},
+    {"name": "车前草", "spec": "全草", "origin": "什邡市", "price": 6.0, "month_chg": -25.00}
+  ],
+  "news": [
+    {"title": "周评：旺季未现，实销为主，陆续采收赶行情，集采执行配送", "date": "09-18", "source": "康美指数"},
+    {"title": "周评：药博带动人气，按需交易，根茎产压大，集采品平稳补货", "date": "09-11", "source": "康美指数"},
+    {"title": "周评：药博会临近，人气增加，部分香料稍好，整体观望迟缓", "date": "09-04", "source": "康美指数"},
+    {"title": "8月月评：市场缓跌中迎产新，淡季加深，商业渠道渐重构", "date": "09-01", "source": "康美指数"},
+    {"title": "产新追踪：低价抑制采摘 楮实子今年新货整体偏少", "date": "09-18", "source": "天地网"},
+    {"title": "广金钱草收购价格上涨 但上行周期仍未到来", "date": "09-16", "source": "天地网"},
+    {"title": "数据周报：砂仁继续震荡，根茎类跌价增，葫芦巴上浮", "date": "09-18", "source": "康美指数"}
+  ],
+  "history_index": [
+    {"date": "2026-09-15", "value": 1470.0},
+    {"date": "2026-09-16", "value": 1468.5},
+    {"date": "2026-09-17", "value": 1465.0},
+    {"date": "2026-09-18", "value": 1462.8},
+    {"date": "2026-09-19", "value": 1461.0},
+    {"date": "2026-09-20", "value": 1460.2},
+    {"date": "2026-09-21", "value": 1459.83},
+    {"date": "2026-09-22", "value": 1457.92}
+  ]
+}
